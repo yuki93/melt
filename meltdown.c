@@ -27,7 +27,7 @@
 #include <signal.h>
 #include <setjmp.h>
 
-#define BYTE_SIZE 256
+#define BYTE_NUM 256
 #define CHUNK_SHIFT 0x0c
 #define CHUNK_SIZE (1 << CHUNK_SHIFT)
 
@@ -46,7 +46,7 @@ int meltdown(uintptr_t addr, uint8_t *val)
     struct sigaction sa;
 
     // alloc tube
-    if ((ret = posix_memalign((void **)&tube, CHUNK_SIZE, BYTE_SIZE * CHUNK_SIZE)) != 0)
+    if ((ret = posix_memalign((void **)&tube, CHUNK_SIZE, BYTE_NUM * CHUNK_SIZE)) != 0)
         goto exit;
 
     // install signal handler
@@ -75,7 +75,7 @@ int meltdown(uintptr_t addr, uint8_t *val)
 cont:
     mini = 0;
     mint = 0;
-    for (i = 0; i < BYTE_SIZE; i++)
+    for (i = 0; i < BYTE_NUM; i++)
     {
         curr = (uintptr_t)tube + i * CHUNK_SIZE;
 
