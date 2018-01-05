@@ -90,7 +90,7 @@ cont:
             "rdtsc              \n\t" // read TSC
             "subq %0,     %%rax \n\t" // diff TSC
             "mov %%rax,   %0    \n\t" // output
-            : "=r"(t)
+            : "=&r"(t)
             : "r"(curr)
             : "rdx", "rax"); // RDX and RAX are affected by RDTSC
 
