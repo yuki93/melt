@@ -38,7 +38,7 @@ static uint8_t _val = 0;
 static void sigsegv_handler(int sig, siginfo_t *info, void *uap)
 {
     int i, mini = 0;
-    uint64_t t, mint = 0;
+    uint32_t t, mint = 0;
     uintptr_t p;
 
     for (i = 0; i < BYTE_NUM; i++)
@@ -67,7 +67,7 @@ static void sigsegv_handler(int sig, siginfo_t *info, void *uap)
         }
     }
 
-    printf("Guess: %02x, dTSC: %llu\n", mini, mint);
+    printf("Guess: %02x, dTSC: %d\n", mini, mint);
 
     _val = mini;
 
