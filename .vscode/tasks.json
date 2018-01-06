@@ -11,6 +11,15 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "ASM",
+            "type": "shell",
+            "command": "gcc -O0 -S -Wall main.c meltdown.c",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         }
     ]
 }

