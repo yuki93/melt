@@ -1,5 +1,7 @@
 # melt
 
+**NOT WORKING, PULL REQUESTS ARE WELCOMED**
+
 [WIP] Meltdown PoC on X86_64
 
 ## About 
